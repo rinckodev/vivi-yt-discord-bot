@@ -88,12 +88,30 @@ new Command({
             description: "Exibe a fila atual",
             type: ApplicationCommandOptionType.Subcommand,
         },
+        {
+            name: "embaralhar",
+            description: "Embaralha a ordem das músicas na fila",
+            type: ApplicationCommandOptionType.Subcommand,
+        },
+        {
+            name: "selecionar",
+            description: "Pular para uma música específica na fila",
+            type: ApplicationCommandOptionType.Subcommand,
+            options: [
+                {
+                    name: "música",
+                    description: "Selecione a música",
+                    type: ApplicationCommandOptionType.String,
+                    required, autocomplete: true,
+                }
+            ]
+        }
     ],
     async autocomplete(interaction) {
-        const { options, /* guild */ } = interaction;
+        const { options, guild } = interaction;
 
         const player = useMainPlayer();
-        // const queue = player.queues.cache.get(guild.id);
+        const queue = player.queues.cache.get(guild.id);
 
         switch(options.getSubcommand(true)){
             case "pesquisar":{
@@ -111,6 +129,16 @@ new Command({
                         value: track.url
                     })).slice(0, 25));
                 } catch(_){}
+                return;
+            }
+            case "selecionar":{
+                if (!queue || queue.size < 1) return;
+
+                const choices = queue.tracks.map((track, index) => ({
+                    name: limitText(`${index}) ${track.title}`, 100),
+                    value: track.id
+                }));
+                interaction.respond(choices.slice(0, 25));
                 return;
             }
         }
@@ -241,6 +269,25 @@ new Command({
                     })),
                     render: (embeds, components) => interaction.editReply({ embeds, components })
                 });
+                return;
+            }
+            case "embaralhar":{
+                queue.tracks.shuffle();
+                interaction.editReply(res.success(`${icon("success")} A fila foi embaralhada!`));
+                return;
+            }
+            case "selecionar":{
+                const trackId = options.getString("música", true);
+
+                try {
+                    const skipped = queue.node.skipTo(trackId);
+                    interaction.editReply(skipped
+                        ? res.success(`${icon("success")} Músicas puladas com sucesso!`)
+                        : res.danger(`${icon("danger")} Nenhum música foi pulada!`)
+                    );
+                } catch (_) {
+                    interaction.editReply(res.danger(`${icon("danger")} Não foi possível pular para a música selecionada`));
+                }
                 return;
             }
         }

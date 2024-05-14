@@ -30,7 +30,35 @@ new Command({
                     }))
                 }
             ]
-        }
+        },
+        {
+            name: "pausar",
+            description: "Pausa a música atual",
+            type: ApplicationCommandOptionType.Subcommand,
+        },
+        {
+            name: "retomar",
+            description: "Retoma a música atual",
+            type: ApplicationCommandOptionType.Subcommand,
+        },
+        {
+            name: "parar",
+            description: "Para a música atual",
+            type: ApplicationCommandOptionType.Subcommand,
+        },
+        {
+            name: "pular",
+            description: "Pular músicas da fila",
+            type: ApplicationCommandOptionType.Subcommand,
+            options: [
+                {
+                    name: "quantidade",
+                    description: "Quantide de músicas para pular",
+                    type: ApplicationCommandOptionType.Integer,
+                    minValue: 1,
+                }
+            ]
+        },
     ],
     async run(interaction){
         const { options, member, guild, channel, client } = interaction;
@@ -78,6 +106,46 @@ new Command({
                 } catch(_){
                     interaction.editReply(res.danger(`${icon("danger")} Não foi possível tocar a música`));
                 }
+                return;
+            }
+        }
+
+        if (!queue){
+            interaction.editReply(res.danger(`${icon("danger")} Não há uma fila de reprodução ativa!`));
+            return;
+        }
+
+        switch(options.getSubcommand(true)){
+            case "pausar":{
+                if (queue.node.isPaused()){
+                    interaction.editReply(res.danger(`${icon("danger")} A música atual já está pausada!`));
+                    return;
+                }
+                queue.node.pause();
+                interaction.editReply(res.success(`${icon("success")} A música atual foi pausada!`));
+                return;
+            }
+            case "retomar":{
+                if (!queue.node.isPaused()){
+                    interaction.editReply(res.danger(`${icon("danger")} A música atual não está pausada!`));
+                    return;
+                }
+                queue.node.resume();
+                interaction.editReply(res.success(`${icon("success")} A música atual foi retomada!`));
+                return;
+            }
+            case "parar":{
+                queue.node.stop();
+                interaction.editReply(res.success(`${icon("success")} A música atual foi parada!`));
+                return;
+            }
+            case "pular":{
+                const amount = options.getInteger("quantidade") ?? 1;
+                const skipAmount = Math.min(queue.size, amount);
+                for(let i = 0; i < skipAmount; i++){
+                    queue.node.skip();
+                }
+                interaction.editReply(res.success(`${icon("success")} Músicas puladas com sucesso!`));
                 return;
             }
         }
